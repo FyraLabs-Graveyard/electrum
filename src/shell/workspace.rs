@@ -19,11 +19,14 @@ use smithay::{
 
 use crate::{runtime::messages::RuntimeMessage, state::State};
 
+use super::layout::Layout;
+
 pub struct Workspace {
     pub idx: u8,
     pub space: Space,
     pub fullscreen: HashMap<String, Window>,
     pub runtime_sender: Sender<RuntimeMessage>,
+    pub layer: Layout,
 }
 
 impl Workspace {
@@ -33,6 +36,7 @@ impl Workspace {
             space: Space::new(slog_scope::logger()),
             fullscreen: HashMap::new(),
             runtime_sender: rs,
+            layer: Layout::new(),
         }
     }
 

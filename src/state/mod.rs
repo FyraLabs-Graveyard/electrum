@@ -7,7 +7,6 @@ use smithay::{
         calloop::{channel::Sender, LoopHandle, LoopSignal},
         wayland_server::{
             backend::{ClientData, ClientId, DisconnectReason},
-            protocol::wl_surface::WlSurface,
             Display, DisplayHandle,
         },
     },
@@ -20,7 +19,6 @@ use smithay::{
         seat::{Seat, SeatState},
         shm::ShmState,
         viewporter::ViewporterState,
-        Serial,
     },
 };
 
@@ -36,10 +34,10 @@ mod dmabuf;
 mod layer_shell;
 pub(crate) mod output;
 mod primary_selection;
-mod seat;
+pub(crate) mod seat;
 mod shm;
 mod viewporter;
-mod xdg_shell;
+pub(crate) mod xdg_shell;
 
 pub enum BackendData {
     Winit(WinitState),
@@ -141,24 +139,5 @@ impl State {
 
     pub fn new_client_state(&self) -> ClientState {
         ClientState {}
-    }
-}
-
-impl CommonState {
-    /// Deno Function
-    pub fn set_focus(
-        &mut self,
-        dh: &DisplayHandle,
-        surface: Option<&WlSurface>,
-        active_seat: &Seat<State>,
-        serial: Option<Serial>,
-    ) {
-        self.shell.set_focus(dh, surface, active_seat, serial);
-        self.shell.update_active(self.seats.iter());
-    }
-
-    /// Deno Function
-    pub fn refresh_focus(&mut self, _dh: &DisplayHandle) {
-        // TODO Focus
     }
 }

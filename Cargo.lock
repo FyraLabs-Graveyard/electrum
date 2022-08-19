@@ -1307,12 +1307,15 @@ name = "electrum"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitflags",
  "calloop",
  "deno_ast",
  "deno_core",
  "deno_runtime",
  "futures",
  "image",
+ "indexmap",
+ "lazy_static",
  "num_cpus",
  "slog",
  "slog-scope",

@@ -13,12 +13,6 @@ use crate::state::State;
 // Messages from the runtime to the compositor
 pub enum RuntimeMessage {
     Ping,
-    MoveRequest {
-        window: Window,
-        seat: Seat<State>,
-        serial: Serial,
-        start_data: PointerGrabStartData,
-    },
     MaximizeRequest {
         window: Window,
         output: Output,
