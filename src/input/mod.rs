@@ -2,7 +2,7 @@
 
 use smithay::backend::input::{
     Axis, AxisSource, ButtonState, Device, DeviceCapability, Event, InputBackend, InputEvent,
-    PointerAxisEvent, PointerButtonEvent, PointerMotionAbsoluteEvent, PointerMotionEvent,
+    PointerAxisEvent, PointerButtonEvent, PointerMotionAbsoluteEvent, PointerMotionEvent, KeyboardKeyEvent,
 };
 
 use smithay::desktop::{layer_map_for_output, WindowSurfaceType};
@@ -11,7 +11,7 @@ use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::DisplayHandle;
 use smithay::utils::{Logical, Point, Rectangle};
 use smithay::wayland::output::Output;
-use smithay::wayland::seat::{AxisFrame, ButtonEvent, CursorImageStatus, MotionEvent, Seat};
+use smithay::wayland::seat::{AxisFrame, ButtonEvent, CursorImageStatus, MotionEvent, Seat, FilterResult, XkbConfig};
 use smithay::wayland::shell::wlr_layer::Layer as WlrLayer;
 use smithay::wayland::SERIAL_COUNTER;
 use std::cell::RefCell;
@@ -95,6 +95,12 @@ pub fn add_seat(dh: &DisplayHandle, name: String) -> Seat<State> {
             .unwrap()
             .borrow_mut() = status;
     });
+    seat.add_keyboard(
+        XkbConfig::default(),
+        200, 
+        25,
+        move |_, _|{()})
+    .expect("Failed to initialize keyboard");
 
     seat
 }
@@ -132,7 +138,26 @@ impl State {
                     }
                 }
             }
-            InputEvent::Keyboard { event: _ } => {}
+            InputEvent::Keyboard { event } => {
+                let key_code = event.key_code();
+                let state = event.state();
+                let time = event.time();
+                let device = event.device();
+                for seat in self.common.seats.clone().iter() {
+                    let userdata = seat.user_data();
+                    let devices = userdata.get::<Devices>().unwrap();
+                    if devices.has_device(&device) {
+                        seat.get_keyboard().unwrap().input(
+                            dh, 
+                            key_code, 
+                            state, 
+                            SERIAL_COUNTER.next_serial(), 
+                            time,
+                            //TODO: filter out shell keyboard shortcuts
+                            |_, _|{FilterResult::Forward::<()>});
+                    }
+                }
+            }
             InputEvent::PointerMotion { event } => {
                 let device = event.device();
                 for seat in self.common.seats.clone().iter() {
