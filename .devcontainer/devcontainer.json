@@ -1,0 +1,15 @@
+{
+    "name": "Fedora",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": { "VARIANT": "36" }
+    },
+    "settings": {},
+    "extensions": [
+        "rust-lang.rust-analyzer",
+        "bungcip.better-toml",
+        "serayuzgur.crates"
+    ],
+    "remoteUser": "vscode",
+    "remoteEnv": { "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin" }
+}

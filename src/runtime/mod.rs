@@ -12,7 +12,9 @@ use deno_runtime::worker::MainWorker;
 mod main;
 pub mod messages;
 mod module;
+mod extension;
 
+use futures::channel::mpsc::UnboundedSender;
 use messages::{CompositorMessage, RuntimeMessage};
 
 pub struct Runtime {
@@ -20,6 +22,7 @@ pub struct Runtime {
     main_module: ModuleSpecifier,
     runtime_channel: Channel<RuntimeMessage>,
     compositor_sender: Sender<CompositorMessage>,
+    event_sender: UnboundedSender<extension::Event>,
 
     pub runtime_sender: Sender<RuntimeMessage>,
 }
@@ -43,10 +46,11 @@ impl Runtime {
 
         let main_module = deno_core::resolve_path(config_path.to_str().unwrap())
             .expect("failed to resolve main module");
-        let main_worker = main::new(main_module.clone());
+        let main_worker_instance = main::new(main_module.clone());
 
         Runtime {
-            main_worker,
+            main_worker: main_worker_instance.worker,
+            event_sender: main_worker_instance.event_sender,
             main_module,
             runtime_channel,
             runtime_sender,

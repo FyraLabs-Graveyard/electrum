@@ -1,11 +1,13 @@
+use super::extension::main_extension;
 use super::module::TypescriptModuleLoader;
 use deno_core::error::AnyError;
-use deno_core::ModuleSpecifier;
+use deno_core::{ModuleSpecifier, Extension};
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::{MainWorker, WorkerOptions};
 use deno_runtime::BootstrapOptions;
+use futures::channel::mpsc::UnboundedSender;
 use std::{rc::Rc, sync::Arc};
 
 // https://github.com/denoland/deno/blob/main/runtime/examples/hello_runtime.rs
@@ -14,7 +16,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
-fn options() -> WorkerOptions {
+fn options(extensions: Vec<Extension>) -> WorkerOptions {
     let module_loader = Rc::new(TypescriptModuleLoader);
     let create_web_worker_cb = Arc::new(|_| {
         todo!("Web workers are not supported within electrum");
@@ -37,7 +39,7 @@ fn options() -> WorkerOptions {
             unstable: false,
             user_agent: "electrum".to_string(),
         },
-        extensions: vec![],
+        extensions,
         unsafely_ignore_certificate_errors: None,
         root_cert_store: None,
         seed: None,
@@ -58,6 +60,17 @@ fn options() -> WorkerOptions {
     }
 }
 
-pub fn new(main_module_path: ModuleSpecifier) -> MainWorker {
-    MainWorker::bootstrap_from_options(main_module_path, Permissions::allow_all(), options())
+pub struct MainWorkerInstance {
+    pub worker: MainWorker,
+    pub event_sender: UnboundedSender<super::extension::Event>
+}
+
+pub fn new(main_module_path: ModuleSpecifier) -> MainWorkerInstance {
+    let extension_instance = main_extension();
+    let worker = MainWorker::bootstrap_from_options(main_module_path, Permissions::allow_all(), options(vec![extension_instance.extension]));
+
+    MainWorkerInstance {
+        worker,
+        event_sender: extension_instance.event_sender
+    }
 }

@@ -44,6 +44,11 @@ futures = "0.3.23"
 indexmap = "1.9.1"
 lazy_static = "1.4.0"
 bitflags = "1.3.2"
+deno_ops = "0.25.0"
+
+[dependencies.serde]
+features = [ "derive" ]
+version = "1.0.143"
 
 [dependencies.deno_ast]
 features = [ "transpiling" ]
