@@ -1,25 +1,24 @@
-//! This Implementation, ideally, will purely be callbacks to an FFI.
-//! There should be minimal amounts of code here, any code here is either for debug purposes or in development
-
 use calloop::channel::Sender;
 use smithay::{
     desktop::{layer_map_for_output, LayerSurface, PopupManager, Window, WindowSurfaceType},
     reexports::wayland_server::{protocol::wl_surface::WlSurface, DisplayHandle},
-    utils::{Logical, Point},
+    utils::{Coordinate, Logical, Point},
     wayland::{
         compositor::with_states,
         output::Output,
-        seat::{PointerGrabStartData, Seat},
+        seat::Seat,
         shell::{
             wlr_layer::{
                 KeyboardInteractivity, Layer, LayerSurfaceCachedState, WlrLayerShellState,
             },
             xdg::{PopupSurface, PositionerState, XdgShellState},
         },
-        Serial,
     },
 };
 
+pub mod focus;
+pub mod grab;
+pub mod layout;
 pub mod workspace;
 
 use crate::{runtime::messages::RuntimeMessage, state::State};
@@ -136,56 +135,30 @@ impl Shell {
         }
     }
 
-    pub fn map_window(&mut self, window: &Window, _output: &Output, _dh: &DisplayHandle) {
+    pub fn map_window(&mut self, window: &Window, _output: &Output, dh: &DisplayHandle) {
+        let pos = self
+            .pending_windows
+            .iter()
+            .position(|(w, _)| w == window)
+            .unwrap();
+        let (window, seat) = self.pending_windows.remove(pos);
+        let surface = window.toplevel().wl_surface().clone();
         let workspace = self.active_workspace_mut();
 
         workspace
             .space
-            .map_window(window, Point::from((0, 0)), 0, false);
+            .map_window(&window, Point::from((0, 0)), 0, false);
+
+        self.set_focus(dh, Some(&surface), &seat, None);
     }
 
-    /// Deno Function
-    pub fn move_request(
-        &mut self,
-        window: &Window,
-        seat: &Seat<State>,
-        serial: Serial,
-        start_data: PointerGrabStartData,
-    ) {
-        if let Some(_pointer) = seat.get_pointer() {
-            let workspace = self
-                .space_for_window_mut(window.toplevel().wl_surface())
-                .unwrap();
-            if workspace.fullscreen.values().any(|w| w == window) {
-                return;
-            }
-
-            workspace
-                .runtime_sender
-                .send(RuntimeMessage::MoveRequest {
-                    window: window.clone(),
-                    seat: seat.clone(),
-                    serial,
-                    start_data,
-                })
-                .unwrap();
-        }
-    }
-
-    /// Deno Function
-    pub fn set_focus(
-        &mut self,
-        _dh: &DisplayHandle,
-        _surface: Option<&WlSurface>,
-        _active_seat: &Seat<State>,
-        _serial: Option<Serial>,
-    ) {
-        // TODO: Focus
-    }
-
-    /// Deno Function
-    pub fn update_active<'a>(&mut self, _seats: impl Iterator<Item = &'a Seat<State>>) {
-        // TODO: Focus
+    pub fn space_relative_output_geometry<C: Coordinate>(
+        &self,
+        global_loc: impl Into<Point<C, Logical>>,
+        output: &Output,
+    ) -> Point<C, Logical> {
+        let p = global_loc.into().to_f64() - output.current_location().to_f64();
+        (C::from_f64(p.x), C::from_f64(p.y)).into()
     }
 
     /// Deno Function
